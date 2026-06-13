@@ -355,6 +355,7 @@ export default function ScheduleView({
           </div>
         ) : (
           filteredClasses.map((cls) => {
+            const matchedSubject = subjects.find(s => s.id === cls.subjectId);
             return (
               <div
                 key={cls.id}
@@ -367,6 +368,11 @@ export default function ScheduleView({
                       <span className="font-mono text-xs font-bold text-bunk-sub-light dark:text-bunk-sub-dark bg-bunk-bg-light dark:bg-zinc-800 px-2.5 py-1 rounded-md">
                         {cls.startTime} - {cls.endTime}
                       </span>
+                      {matchedSubject && (
+                        <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded ${matchedSubject.type === 'lab' ? 'text-[#C56E4A] bg-amber-500/10' : 'text-blue-500 bg-blue-500/10'}`}>
+                          {matchedSubject.type === 'lab' ? '🧪 Lab' : '📖 Theory'}
+                        </span>
+                      )}
                       {cls.room && (
                         <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 bg-neutral-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
                           {cls.room}

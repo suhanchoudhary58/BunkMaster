@@ -24,6 +24,7 @@ export default function ProfileView({
   const [name, setName] = useState(preferences.name);
   const [globalTarget, setGlobalTarget] = useState(preferences.globalTarget);
   const [theme, setTheme] = useState(preferences.theme);
+  const [semesterBreak, setSemesterBreak] = useState(preferences.semesterBreak ?? false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -32,7 +33,7 @@ export default function ProfileView({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdatePreferences({ name, globalTarget, theme });
+    onUpdatePreferences({ name, globalTarget, theme, semesterBreak });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
   };
@@ -131,6 +132,28 @@ export default function ProfileView({
                 <option value={90} className="bg-white dark:bg-zinc-900 text-bunk-text-light dark:text-bunk-text-dark">90% (Scholarship Tier)</option>
               </select>
               <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Used as standard comparison limits when creating new courses or calculating risk indexes.</p>
+            </div>
+
+            {/* Semester Break Toggle */}
+            <div id="semester-break-switch-card" className="p-4 bg-amber-500/5 dark:bg-amber-500/5 border border-dashed border-amber-500/20 rounded-2xl flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#C56E4A] font-mono flex items-center gap-1.5">
+                  <span className="text-sm">🌴</span> Semester Break Mode
+                </span>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                  Disables active attendance reminders, warning notifications, and schedule alerts during your holidays.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                <input
+                  id="semester-break-checkbox"
+                  type="checkbox"
+                  checked={semesterBreak}
+                  onChange={(e) => setSemesterBreak(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-850 rounded-full peer peer-focus:ring-2 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-zinc-600 peer-checked:bg-[#C56E4A]"></div>
+              </label>
             </div>
 
             {/* Visual themes switcher */}

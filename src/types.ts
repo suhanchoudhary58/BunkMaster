@@ -5,6 +5,7 @@ export interface Subject {
   attended: number;
   missed: number;
   targetPercentage: number; // e.g. 75
+  type?: 'lecture' | 'lab';
 }
 
 export type ClassState = 'regular' | 'cancelled' | 'extra' | 'rescheduled';
@@ -43,4 +44,5 @@ export interface UserPreferences {
   name: string;
   globalTarget: number;
   theme: 'light' | 'dark';
+  semesterBreak?: boolean;
 }

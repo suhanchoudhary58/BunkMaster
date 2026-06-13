@@ -1,8 +1,56 @@
 import React, { useState } from 'react';
-import { BookOpen, Plus, Trash2, Edit2, CheckCircle2, XCircle, Undo2, Sliders, ChevronDown, ChevronUp, History, Percent, Check, X } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Edit2, CheckCircle2, XCircle, Undo2, Sliders, ChevronDown, ChevronUp, History, Percent, Check, X, Sparkles } from 'lucide-react';
 import { Subject, DayLog } from '../types';
 import { calculateSubjectMetrics } from '../utils/calculations';
 import { motion, AnimatePresence } from 'motion/react';
+
+const calculateSmartPrediction = (attended: number, missed: number) => {
+  const total = attended + missed;
+  if (total === 0) {
+    return {
+      status: 'stable',
+      text: 'No lectures logged yet',
+      subtext: 'Velocity: --',
+      color: 'text-zinc-500 bg-neutral-50 dark:bg-zinc-900/40 border-neutral-100 dark:border-zinc-800'
+    };
+  }
+
+  const currentRate = attended / total;
+  const target = 0.75;
+
+  if (currentRate >= target) {
+    // How many consecutive classes can be missed before falling below 75%
+    // attended / (attended + missed + x) < 0.75 -> x > (attended / 3) - missed
+    const maxMissSafe = Math.floor((attended / 0.75) - total);
+    
+    if (maxMissSafe > 0) {
+      return {
+        status: 'safe',
+        text: `Can skip next ${maxMissSafe} class${maxMissSafe > 1 ? 'es' : ''}`,
+        subtext: `Velocity: ${(currentRate * 100).toFixed(0)}% (Secure)`,
+        color: 'text-emerald-700 bg-emerald-500/5 border-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/5 dark:border-emerald-500/10'
+      };
+    } else {
+      return {
+        status: 'warning',
+        text: 'At critical 75% line',
+        subtext: 'Do not miss next class',
+        color: 'text-amber-700 bg-amber-500/5 border-amber-500/10 dark:text-amber-450 dark:bg-amber-500/5 dark:border-amber-500/10'
+      };
+    }
+  } else {
+    // Below 75%. How many consecutive classes to attend to reach 75%?
+    // (attended + x) / (total + x) >= 0.75 -> x >= 3*total - 4*attended
+    const classesNeeded = Math.ceil(3 * total - 4 * attended);
+    
+    return {
+      status: 'risk',
+      text: `Attend next ${classesNeeded} lecture${classesNeeded > 1 ? 's' : ''}`,
+      subtext: `Velocity: ${(currentRate * 100).toFixed(0)}% (Under 75%)`,
+      color: 'text-rose-700 bg-rose-500/5 border-rose-500/10 dark:text-rose-450 dark:bg-rose-500/5 dark:border-rose-500/10'
+    };
+  }
+};
 
 interface SwipeableLogItemProps {
   key?: string;
@@ -15,7 +63,9 @@ function SwipeableLogItem({ log, onDelete }: SwipeableLogItemProps) {
     <motion.div
       key={log.id}
       layout
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto', transition: { height: { type: 'spring', stiffness: 500, damping: 30 }, opacity: { duration: 0.2 } } }}
+      exit={{ opacity: 0, height: 0, transition: { height: { duration: 0.2 }, opacity: { duration: 0.15 } } }}
       className="relative overflow-hidden group border-b last:border-0 border-neutral-100 dark:border-zinc-800"
     >
       {/* Background/Underlay Delete Action */}
@@ -63,9 +113,10 @@ function SwipeableLogItem({ log, onDelete }: SwipeableLogItemProps) {
 interface SubjectsViewProps {
   subjects: Subject[];
   logs: DayLog[];
-  onAddSubject: (name: string, code: string, target: number) => void;
+  onAddSubject: (name: string, code: string, target: number, type?: 'lecture' | 'lab') => void;
   onUpdateSubjectAttendance: (subjectId: string, attended: number, missed: number) => void;
   onUpdateSubjectTarget: (subjectId: string, target: number) => void;
+  onUpdateSubjectType: (subjectId: string, type: 'lecture' | 'lab') => void;
   onDeleteSubject: (subjectId: string) => void;
   onLogRetroactive: (subjectId: string, status: 'present' | 'absent', dateString: string) => void;
   onDeleteLog: (logId: string) => void;
@@ -77,6 +128,7 @@ export default function SubjectsView({
   onAddSubject,
   onUpdateSubjectAttendance,
   onUpdateSubjectTarget,
+  onUpdateSubjectType,
   onDeleteSubject,
   onLogRetroactive,
   onDeleteLog
@@ -85,6 +137,8 @@ export default function SubjectsView({
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
   const [newTarget, setNewTarget] = useState(75);
+  const [newType, setNewType] = useState<'lecture' | 'lab'>('lecture');
+  const [filterType, setFilterType] = useState<'all' | 'lecture' | 'lab'>('all');
 
   const [expandedLogsId, setExpandedLogsId] = useState<string | null>(null);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
@@ -97,7 +151,7 @@ export default function SubjectsView({
     e.preventDefault();
     if (!newName.trim()) return;
 
-    onAddSubject(newName.trim(), newCode.trim(), newTarget);
+    onAddSubject(newName.trim(), newCode.trim(), newTarget, newType);
     setNewName('');
     setNewCode('');
     setIsAdding(false);
@@ -149,8 +203,8 @@ export default function SubjectsView({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1 col-span-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1">
               <label className="text-xs font-semibold text-bunk-sub-light dark:text-bunk-sub-dark">Course Title</label>
               <input
                 type="text"
@@ -162,7 +216,7 @@ export default function SubjectsView({
               />
             </div>
 
-            <div className="space-y-1 col-span-1">
+            <div className="space-y-1">
               <label className="text-xs font-semibold text-bunk-sub-light dark:text-bunk-sub-dark">Subject code / label</label>
               <input
                 type="text"
@@ -173,8 +227,20 @@ export default function SubjectsView({
               />
             </div>
 
-            <div className="space-y-1 col-span-1">
-              <label className="text-xs font-semibold text-bunk-sub-light dark:text-bunk-sub-dark">Target Attendance Preset</label>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-bunk-sub-light dark:text-bunk-sub-dark">Course Type / Format</label>
+              <select
+                value={newType}
+                onChange={(e) => setNewType(e.target.value as 'lecture' | 'lab')}
+                className="w-full text-sm border border-bunk-border-light dark:border-zinc-800 rounded-xl p-2.5 bg-bunk-bg-light dark:bg-zinc-900 text-bunk-text-light dark:text-bunk-text-dark"
+              >
+                <option value="lecture">📖 Theory Lecture</option>
+                <option value="lab">🧪 Practical Lab</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#8a8a8a] dark:text-[#a0a0a0]">Target Attendance Preset</label>
               <select
                 value={newTarget}
                 onChange={(e) => setNewTarget(Number(e.target.value))}
@@ -206,30 +272,78 @@ export default function SubjectsView({
         </form>
       )}
 
+      {/* Filter Tabs for separate classes & labs */}
+      <div id="course-type-filter-bar" className="flex items-center justify-between gap-2 bg-zinc-100/80 dark:bg-zinc-900/80 p-1 border border-neutral-200/50 dark:border-zinc-800/80 rounded-2xl max-w-md select-none">
+        <button
+          type="button"
+          onClick={() => setFilterType('all')}
+          className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all duration-200 ${filterType === 'all' ? 'bg-[#2E5E4E] text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+        >
+          All ({subjects.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterType('lecture')}
+          className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all duration-200 ${filterType === 'lecture' ? 'bg-[#2E5E4E] text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+        >
+          📖 Lectures ({subjects.filter(s => (s.type || 'lecture') === 'lecture').length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterType('lab')}
+          className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all duration-200 ${filterType === 'lab' ? 'bg-[#2E5E4E] text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+        >
+          🧪 Labs ({subjects.filter(s => s.type === 'lab').length})
+        </button>
+      </div>
+
       {/* Main Subjects Card Grid List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {subjects.map(sub => {
-          const metrics = calculateSubjectMetrics(sub);
-          const isLogsExpanded = expandedLogsId === sub.id;
-          const isEditingTarget = editingTargetId === sub.id;
-          const subjectLogs = logs.filter(log => log.subjectId === sub.id);
+        {subjects
+          .filter(sub => {
+            if (filterType === 'all') return true;
+            return (sub.type || 'lecture') === filterType;
+          })
+          .map(sub => {
+            const metrics = calculateSubjectMetrics(sub);
+            const isLogsExpanded = expandedLogsId === sub.id;
+            const isEditingTarget = editingTargetId === sub.id;
+            const subjectLogs = logs.filter(log => log.subjectId === sub.id);
+            const prediction = calculateSmartPrediction(sub.attended, sub.missed);
 
-          return (
-            <div key={sub.id} className="bunk-card flex flex-col bg-white dark:bg-bunk-card-dark border border-bunk-border-light dark:border-zinc-800/80 animate-fade-in relative">
-              
-              {/* Header Box of Subject Card */}
-              <div className="p-6 border-b border-bunk-border-light dark:border-zinc-85 border-dashed">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="space-y-1">
-                    {sub.code && (
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-bunk-sub-light dark:text-bunk-sub-dark">
-                        {sub.code}
-                      </span>
-                    )}
-                    <h3 className="text-xl font-extrabold tracking-tight text-bunk-text-light dark:text-bunk-text-dark">
-                      {sub.name}
-                    </h3>
-                  </div>
+            return (
+              <div key={sub.id} className="bunk-card flex flex-col bg-white dark:bg-bunk-card-dark border border-bunk-border-light dark:border-zinc-800/80 animate-fade-in relative">
+                
+                {/* Header Box of Subject Card */}
+                <div className="p-6 border-b border-bunk-border-light dark:border-zinc-800 border-dashed">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {sub.code && (
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-bunk-sub-light dark:text-bunk-sub-dark">
+                            {sub.code}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newType = (sub.type || 'lecture') === 'lab' ? 'lecture' : 'lab';
+                            onUpdateSubjectType(sub.id, newType);
+                          }}
+                          title="Click to toggle between Theory and Lab"
+                          className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer ${
+                            sub.type === 'lab' 
+                              ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-[#C56E4A]' 
+                              : 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                          }`}
+                        >
+                          {sub.type === 'lab' ? '🧪 Lab' : '📖 Theory'}
+                        </button>
+                      </div>
+                      <h3 className="text-xl font-extrabold tracking-tight text-bunk-text-light dark:text-bunk-text-dark">
+                        {sub.name}
+                      </h3>
+                    </div>
 
                   <div className="text-right flex flex-col items-end shrink-0 gap-1.5">
                     <span className="text-3xl font-black font-mono tracking-tighter">
@@ -250,6 +364,15 @@ export default function SubjectsView({
                       backgroundColor: metrics.percentage >= sub.targetPercentage ? '#2E5E4E' : '#C56E4A'
                     }}
                   />
+                </div>
+
+                {/* Smart Prediction Badge */}
+                <div id={`smart-prediction-${sub.id}`} className={`mt-3 px-3 py-2 rounded-xl border border-dashed text-[11px] font-mono select-none flex items-center justify-between gap-2.5 transition-colors duration-200 ${prediction.color}`}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-500 animate-pulse" />
+                    <span className="font-bold truncate">{prediction.text}</span>
+                  </div>
+                  <span className="text-[10px] opacity-75 shrink-0 text-right">{prediction.subtext}</span>
                 </div>
               </div>
 

@@ -321,7 +321,15 @@ export default function DashboardView({
             )}
 
             <div className="space-y-6">
-              {todayClasses.length === 0 ? (
+              {preferences.semesterBreak ? (
+                <div className="py-10 text-center flex flex-col items-center justify-center p-5 bg-[#7D9A7B]/5 dark:bg-zinc-900/40 rounded-2xl border border-dashed border-[#7D9A7B]/25">
+                  <span className="text-3xl mb-2 select-none">🌴</span>
+                  <p className="font-bold text-xs uppercase tracking-wider text-[#7D9A7B] font-mono">Semester Break Enabled</p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1.5 max-w-xs leading-relaxed">
+                    Attendance notifications and schedule alerts are automatically muted. Enjoy your vacation!
+                  </p>
+                </div>
+              ) : todayClasses.length === 0 ? (
                 <div className="py-8 text-center text-bunk-sub-light dark:text-zinc-400 text-xs italic">
                   No scheduled classes today. Enjoy your study break!
                 </div>

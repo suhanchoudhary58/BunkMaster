@@ -205,6 +205,18 @@ export default function App() {
     );
   };
 
+  // Adjust subject type/format
+  const handleUpdateSubjectType = (subjectId: string, type: 'lecture' | 'lab') => {
+    setSubjects(prev =>
+      prev.map(sub => {
+        if (sub.id === subjectId) {
+          return { ...sub, type };
+        }
+        return sub;
+      })
+    );
+  };
+
   // Delete subject
   const handleDeleteSubject = (subjectId: string) => {
     setSubjects(prev => prev.filter(s => s.id !== subjectId));
@@ -215,14 +227,15 @@ export default function App() {
   };
 
   // Create course manually
-  const handleAddSubject = (name: string, code: string, target: number): Subject => {
+  const handleAddSubject = (name: string, code: string, target: number, type?: 'lecture' | 'lab'): Subject => {
     const newSub: Subject = {
       id: `sub-${Date.now()}`,
       name,
       code: code || undefined,
       attended: 0,
       missed: 0,
-      targetPercentage: target || preferences.globalTarget
+      targetPercentage: target || preferences.globalTarget,
+      type: type || 'lecture'
     };
     setSubjects(prev => [...prev, newSub]);
     return newSub;
@@ -346,6 +359,7 @@ export default function App() {
             onAddSubject={handleAddSubject}
             onUpdateSubjectAttendance={handleUpdateSubjectAttendance}
             onUpdateSubjectTarget={handleUpdateSubjectTarget}
+            onUpdateSubjectType={handleUpdateSubjectType}
             onDeleteSubject={handleDeleteSubject}
             onLogRetroactive={handleLogRetroactive}
             onDeleteLog={handleDeleteLog}
@@ -422,7 +436,7 @@ export default function App() {
         </header>
 
         {/* Dynamic Warning Header if any subject is below target limit */}
-        {subjects.some(s => {
+        {!preferences.semesterBreak && subjects.some(s => {
           const total = s.attended + s.missed;
           const pct = total === 0 ? 100 : Math.round((s.attended / total) * 100);
           return total > 0 && pct < s.targetPercentage;
