@@ -30,6 +30,7 @@ export default function ScheduleView({
   const [newEndTime, setNewEndTime] = useState('10:00');
   const [newRoom, setNewRoom] = useState('');
   const [newTeacher, setNewTeacher] = useState('');
+  const [newClassState, setNewClassState] = useState<ClassState>('regular');
 
   // Inline dynamic subject builder State
   const [isCreatingNewSubject, setIsCreatingNewSubject] = useState(false);
@@ -58,7 +59,7 @@ export default function ScheduleView({
       endTime: newEndTime,
       room: newRoom,
       teacher: newTeacher,
-      state: 'regular'
+      state: newClassState
     });
 
     // Reset Form
@@ -91,28 +92,75 @@ export default function ScheduleView({
         
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
+            id="ai-scan-schedule-btn"
             onClick={onOpenScanner}
-            className="flex-1 sm:flex-initial px-4 py-2 bg-bunk-accent dark:bg-bunk-accent-dark text-white rounded-xl text-sm font-semibold hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm"
+            className="flex-1 sm:flex-initial px-4 py-2 bg-bunk-accent dark:bg-bunk-accent-dark text-white rounded-xl text-sm font-semibold hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm cursor-pointer"
           >
             <Sparkles className="w-4 h-4 shrink-0" />
             AI Scan Schedule
           </button>
           
           <button
-            onClick={() => setIsAddingSlot(!isAddingSlot)}
-            className="flex-1 sm:flex-initial px-4 py-2 border border-bunk-border-light dark:border-zinc-800 rounded-xl text-sm font-semibold hover:bg-white dark:hover:bg-zinc-800 flex items-center justify-center gap-2 transition-colors"
+            id="add-manual-slot-btn"
+            onClick={() => {
+              setNewClassState('regular');
+              // Toggle or switch state
+              if (isAddingSlot && newClassState === 'regular') {
+                setIsAddingSlot(false);
+              } else {
+                setIsAddingSlot(true);
+              }
+            }}
+            className={`flex-1 sm:flex-initial px-4 py-2 border rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+              isAddingSlot && newClassState === 'regular'
+                ? 'bg-neutral-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-bunk-accent dark:text-bunk-accent-dark'
+                : 'border-bunk-border-light dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800'
+            }`}
           >
             <Plus className="w-4 h-4 shrink-0" />
             Add Manual Slot
+          </button>
+
+          <button
+            id="add-extra-class-btn"
+            onClick={() => {
+              setNewClassState('extra');
+              // Toggle or switch state
+              if (isAddingSlot && newClassState === 'extra') {
+                setIsAddingSlot(false);
+              } else {
+                setIsAddingSlot(true);
+              }
+            }}
+            className={`flex-1 sm:flex-initial px-4 py-2 border rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+              isAddingSlot && newClassState === 'extra'
+                ? 'bg-amber-500/10 border-amber-300 dark:border-amber-700/50 text-[#C56E4A]'
+                : 'border-bunk-border-light dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800 text-amber-600 dark:text-amber-500'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 shrink-0" />
+            Add Extra Class
           </button>
         </div>
       </div>
 
       {/* Manual Slot Creator Drawer/Card */}
       {isAddingSlot && (
-        <form onSubmit={handleCreateSlot} className="bunk-card p-6 bg-white dark:bg-zinc-900 border border-bunk-border-light dark:border-zinc-800 space-y-4 animate-fade-in">
+        <form id="schedule-creator-form" onSubmit={handleCreateSlot} className="bunk-card p-6 bg-white dark:bg-zinc-900 border border-bunk-border-light dark:border-zinc-800 space-y-4 animate-fade-in">
           <div className="flex justify-between items-center border-b border-bunk-border-light dark:border-zinc-800 pb-3">
-            <h4 className="font-bold text-sm uppercase tracking-wide text-bunk-sub-light dark:text-bunk-sub-dark">New Schedule Slot ({selectedDay})</h4>
+            <h4 className="font-bold text-sm uppercase tracking-wide text-bunk-sub-light dark:text-bunk-sub-dark flex items-center gap-2">
+              {newClassState === 'extra' ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>New Extra Class ({selectedDay})</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-[#2E5E4E]" />
+                  <span>New Schedule Slot ({selectedDay})</span>
+                </>
+              )}
+            </h4>
             <button type="button" onClick={() => setIsAddingSlot(false)} className="text-zinc-400 hover:text-zinc-600">
               <X className="w-4 h-4" />
             </button>
@@ -327,12 +375,14 @@ export default function ScheduleView({
                       <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
                         cls.state === 'regular' ? 'bg-[#7D9A7B]/15 text-[#7D9A7B]' :
                         cls.state === 'cancelled' ? 'bg-red-500/10 text-red-500' :
-                        cls.state === 'extra' ? 'bg-amber-500/10 text-[#C56E4A]' :
+                        cls.state === 'extra' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500' :
                         'bg-blue-500/10 text-blue-500'
                       }`}>
                         {cls.state === 'rescheduled' && cls.rescheduledDate
                           ? `Rescheduled: ${cls.rescheduledDate}${cls.rescheduledTime ? ` @ ${cls.rescheduledTime}` : ''}`
-                          : `${cls.state} State`
+                          : cls.state === 'extra'
+                          ? 'Extra Class'
+                          : `${cls.state} Session`
                         }
                       </span>
                     </div>

@@ -83,6 +83,7 @@ Guidance:
                 ]
               }
             ],
+            max_tokens: 2048,
             response_format: { type: 'json_object' }
           })
         });

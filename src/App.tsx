@@ -103,7 +103,7 @@ export default function App() {
   // --- Handlers & Operations ---
 
   // Log a dynamic attendance event (e.g., today's scheduled hour)
-  const handleLogAttendance = (subjectId: string, status: 'present' | 'absent') => {
+  const handleLogAttendance = (subjectId: string, status: 'present' | 'absent', classId?: string) => {
     const todayStr = new Date().toISOString().split('T')[0];
     
     // Add new audit log
@@ -111,7 +111,8 @@ export default function App() {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       date: todayStr,
       subjectId,
-      status
+      status,
+      classId
     };
 
     setLogs(prev => [newLog, ...prev]);
@@ -260,7 +261,12 @@ export default function App() {
 
   // Data reset function
   const handleClearAllData = () => {
+    localStorage.removeItem('bunk_subjects');
+    localStorage.removeItem('bunk_classes');
+    localStorage.removeItem('bunk_logs');
+    localStorage.removeItem('bunk_preferences');
     localStorage.clear();
+
     setSubjects([]);
     setClasses([]);
     setLogs([]);
@@ -269,6 +275,7 @@ export default function App() {
       globalTarget: 75,
       theme: 'light'
     });
+    setActiveTab('home');
   };
 
   // Import completed backup obj
@@ -315,6 +322,8 @@ export default function App() {
             onLogAttendance={handleLogAttendance}
             onNavigateToTab={setActiveTab}
             onUpdateClassState={handleUpdateClassState}
+            onAddClass={handleAddClass}
+            onDeleteLog={handleDeleteLog}
           />
         );
       case 'schedule':

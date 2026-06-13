@@ -2,6 +2,63 @@ import React, { useState } from 'react';
 import { BookOpen, Plus, Trash2, Edit2, CheckCircle2, XCircle, Undo2, Sliders, ChevronDown, ChevronUp, History, Percent, Check, X } from 'lucide-react';
 import { Subject, DayLog } from '../types';
 import { calculateSubjectMetrics } from '../utils/calculations';
+import { motion, AnimatePresence } from 'motion/react';
+
+interface SwipeableLogItemProps {
+  key?: string;
+  log: DayLog;
+  onDelete: (id: string) => void;
+}
+
+function SwipeableLogItem({ log, onDelete }: SwipeableLogItemProps) {
+  return (
+    <motion.div
+      key={log.id}
+      layout
+      exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+      className="relative overflow-hidden group border-b last:border-0 border-neutral-100 dark:border-zinc-800"
+    >
+      {/* Background/Underlay Delete Action */}
+      <div className="absolute inset-0 bg-red-600 dark:bg-red-750 flex items-center justify-end px-4 text-white">
+        <div className="flex items-center gap-1.5 font-bold font-mono text-[10px] uppercase tracking-wider">
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>Release to delete</span>
+        </div>
+      </div>
+
+      {/* Draggable Foreground */}
+      <motion.div
+        drag="x"
+        dragDirectionLock
+        dragConstraints={{ left: -300, right: 0 }}
+        dragElastic={{ left: 0.15, right: 0.02 }}
+        onDragEnd={(_, info) => {
+          // If swiped left past -95px, trigger delete.
+          if (info.offset.x < -95) {
+            onDelete(log.id);
+          }
+        }}
+        className="p-2.5 flex justify-between items-center bg-white dark:bg-zinc-900 hover:bg-neutral-50 dark:hover:bg-zinc-800/20 font-mono text-xs relative z-10 select-none touch-pan-y"
+      >
+        <span className="text-zinc-650 dark:text-zinc-400 font-medium">{log.date}</span>
+        <div className="flex items-center gap-3">
+          <span className={`font-semibold uppercase tracking-wider text-[10px] rounded px-1.5 py-0.5 ${
+            log.status === 'present' ? 'bg-[#7D9A7B]/10 text-[#7D9A7B]' : 'bg-red-500/10 text-red-500'
+          }`}>
+            {log.status}
+          </span>
+          <button
+            onClick={() => onDelete(log.id)}
+            className="text-zinc-400 hover:text-red-500 p-0.5 relative z-20 cursor-pointer hidden sm:block"
+            title="Undo / Delete log"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 interface SubjectsViewProps {
   subjects: Subject[];
@@ -371,30 +428,19 @@ export default function SubjectsView({
 
                   {/* Log list */}
                   <div className="space-y-1.5">
-                    <p className="font-bold text-[10px] uppercase tracking-wider text-bunk-sub-light dark:text-bunk-sub-dark">Logged Sessions checklist</p>
+                    <div className="flex justify-between items-center">
+                      <p className="font-bold text-[10px] uppercase tracking-wider text-bunk-sub-light dark:text-bunk-sub-dark">Logged Sessions checklist</p>
+                      <span className="text-[9px] font-medium text-zinc-400 dark:text-zinc-400 italic">← Swipe left to delete</span>
+                    </div>
                     {subjectLogs.length === 0 ? (
                       <p className="text-zinc-400 italic py-2 pl-1 font-mono">No sessions logged manually for this subject yet.</p>
                     ) : (
-                      <div className="max-h-[140px] overflow-y-auto divide-y divide-neutral-100 dark:divide-zinc-800 border border-bunk-border-light dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900">
-                        {subjectLogs.map(log => (
-                          <div key={log.id} className="p-2.5 flex justify-between items-center hover:bg-neutral-50 dark:hover:bg-zinc-800/20 font-mono text-xs">
-                            <span className="text-zinc-600 dark:text-zinc-400">{log.date}</span>
-                            <div className="flex items-center gap-3">
-                              <span className={`font-semibold uppercase tracking-wider text-[10px] rounded px-1.5 py-0.5 ${
-                                log.status === 'present' ? 'bg-[#7D9A7B]/10 text-[#7D9A7B]' : 'bg-red-500/10 text-red-500'
-                              }`}>
-                                {log.status}
-                              </span>
-                              <button
-                                onClick={() => onDeleteLog(log.id)}
-                                className="text-zinc-400 hover:text-red-500 p-0.5"
-                                title="Undo / Delete log"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="max-h-[180px] overflow-y-auto border border-bunk-border-light dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 overflow-x-hidden">
+                        <AnimatePresence initial={false}>
+                          {subjectLogs.map(log => (
+                            <SwipeableLogItem key={log.id} log={log} onDelete={onDeleteLog} />
+                          ))}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>
