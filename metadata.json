@@ -1,0 +1,6 @@
+{
+  "name": "BunkMaster",
+  "description": "A premium collegiate attendance companion and bunk calculator built with Japanese minimalist design cues and smart AI schedule scanners.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
